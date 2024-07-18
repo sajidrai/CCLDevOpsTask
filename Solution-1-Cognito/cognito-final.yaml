@@ -1,0 +1,130 @@
+AWSTemplateFormatVersion: "2010-09-09"  
+Parameters:  
+  CognitoDomain:  
+    Type: String  
+    MinLength: 3  
+    MaxLength: 63  
+    AllowedPattern: ^[a-z0-9](?:[a-z0-9\-]{0,61}[a-z0-9])$  
+    Description: Enter a string. Must be alphanumeric 3-63 characters in length.  
+
+Resources:  
+  CloudFormationExecutionRole1:  
+    Type: "AWS::IAM::Role"  
+    Properties:  
+      AssumeRolePolicyDocument:  
+        Version: "2012-10-17"  
+        Statement:  
+          - Effect: "Allow"  
+            Principal:  
+              Service: "cloudformation.amazonaws.com"  
+            Action: "sts:AssumeRole"  
+      Policies:  
+        - PolicyName: "CloudFormationExecutionPolicy"  
+          PolicyDocument:  
+            Version: "2012-10-17"  
+            Statement:  
+              - Effect: "Allow"  
+                Action:  
+                  - "sns:Publish"  
+                Resource: "*"  
+
+  SMSSendingRole9:  
+    Type: AWS::IAM::Role  
+    Properties:  
+      RoleName: "SMSSendingRole9"  
+      AssumeRolePolicyDocument:  
+        Version: "2012-10-17"  
+        Statement:  
+          - Effect: "Allow"  
+            Principal:  
+              Service: "cognito-idp.amazonaws.com"  
+            Action: "sts:AssumeRole"  
+      Policies:  
+        - PolicyName: "SMSSendingPolicy"  
+          PolicyDocument:  
+            Version: "2012-10-17"  
+            Statement:  
+              - Effect: "Allow"  
+                Action:  
+                  - "sns:Publish"  
+                Resource: "*"    
+
+  UserPool:  
+    Type: AWS::Cognito::UserPool  
+    Properties:  
+      VerificationMessageTemplate:  
+        DefaultEmailOption: "CONFIRM_WITH_CODE"  
+        EmailSubject: "Your verification code"  
+        EmailMessage: "Your verification code is: {####}"  
+      UsernameConfiguration:  
+        CaseSensitive: false  
+      AutoVerifiedAttributes:  
+        - email  
+        - phone_number  
+      UserPoolName: !Sub ${CognitoDomain}-user-pool  
+      MfaConfiguration: "ON"   
+      EnabledMfas: ["SMS_MFA","SOFTWARE_TOKEN_MFA"]  
+      SmsConfiguration:  
+        ExternalId: "your-external-id"  
+        SnsCallerArn: !GetAtt SMSSendingRole9.Arn  
+      Schema:  
+        - Name: email  
+          AttributeDataType: String  
+          Mutable: false  
+          Required: true  
+        - Name: name  
+          AttributeDataType: String  
+          Mutable: true  
+          Required: true    
+
+  UserPoolClient:  
+    Type: AWS::Cognito::UserPoolClient  
+    Properties:  
+      GenerateSecret: false  
+      ExplicitAuthFlows:  
+        - ALLOW_ADMIN_USER_PASSWORD_AUTH  
+        - ALLOW_USER_PASSWORD_AUTH  
+        - ALLOW_USER_SRP_AUTH  
+        - ALLOW_REFRESH_TOKEN_AUTH  
+      UserPoolId: !Ref UserPool  
+      AllowedOAuthFlowsUserPoolClient: true  
+      CallbackURLs:  
+        - http://localhost:3000/log_in.html  
+      AllowedOAuthFlows:  
+        - code  
+        - implicit  
+      AllowedOAuthScopes:  
+        - phone  
+        - email  
+        - openid  
+        - profile  
+      SupportedIdentityProviders:  
+        - COGNITO  
+      LogoutURLs:  
+        - http://localhost:3000/log_out.html  
+
+  UserPoolDomain:  
+    Type: AWS::Cognito::UserPoolDomain  
+    Properties:  
+      Domain: !Ref CognitoDomain  
+      UserPoolId: !Ref UserPool  
+
+Outputs:  
+  CognitoUserPoolID:  
+    Value: !Ref UserPool  
+    Description: The UserPool ID  
+  CognitoAppClientID:  
+    Value: !Ref UserPoolClient  
+    Description: The app client  
+  HostedUIURL:  
+    Value: !Sub https://${CognitoDomain}.auth.${AWS::Region}.amazoncognito.com/login?client_id=${UserPoolClient}&response_type=code&scope=email+openid+phone+profile&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2index.html
+    Description: The hosted UI URL  
+  SignInURL:  
+    Value: !Sub https://${CognitoDomain}.auth.${AWS::Region}.amazoncognito.com/login?client_id=${UserPoolClient}&response_type=code&scope=email+openid+phone+profile&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Flog_in.html  
+    Description: The sign-in URL  
+  SignUpURL:  
+    Value: !Sub https://${CognitoDomain}.auth.${AWS::Region}.amazoncognito.com/signup?client_id=${UserPoolClient}&response_type=code&scope=email+openid+phone+profile&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Flog_in.html  
+    Description: The sign-up URL  
+  LogoutURL:  
+    Value: !Sub https://${CognitoDomain}.auth.${AWS::Region}.amazoncognito.com/logout?client_id=${UserPoolClient}&logout_uri=http%3A%2F%2Flocalhost%3A3000%2Flog_out.html  
+    Description: The logout URL

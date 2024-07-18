@@ -1,0 +1,353 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: CloudFormation template to deploy Lambda functions, a Lambda layer, and a DynamoDB table. Includes IAM roles with permissions for DynamoDB, invoking another Lambda function, and sending email via SES.
+
+Parameters:
+  Region:
+    Type: String
+    Description: The AWS region where the resources will be created.
+    Default: us-east-1
+
+  AccountId:
+    Type: String
+    Description: The AWS account ID where the resources will be created.
+    Default: 866934333672
+
+  EnvironmentName:
+    Type: String
+    Description: The environment name (e.g., dev, staging, prod).
+    Default: dev
+
+  UserTokensTableName:
+    Type: String
+    Description: The name of the DynamoDB table for user tokens.
+    Default: UserTokensTable
+  
+  SenderEmail:
+    Type: String
+    Description: sender email address from where verification token will be sent
+    Default: sajidali.gcu@gmail.com
+  
+  SecretKeyJwtToken:
+    Type: String
+    Description: secret key for signing JWT token
+    Default: secret_key
+  
+  S3BucketName:
+    Type: String
+    Description: S3 bucket name where lambda's zip files and jwtpythonlayer are uploaded
+    Default: devopsassignmentccl
+
+Resources:
+  # DynamoDB Table Resource
+  UserTokensTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Ref UserTokensTableName
+      AttributeDefinitions:
+        - AttributeName: email
+          AttributeType: S
+      KeySchema:
+        - AttributeName: email
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+      BillingMode: PROVISIONED
+
+  # IAM Role for Token Creation Lambda Function
+  TokenCreationLambdaRole:  
+    Type: AWS::IAM::Role  
+    Properties:  
+      RoleName: TokenCreationLambdaRole  
+      AssumeRolePolicyDocument:  
+        Version: "2012-10-17"  
+        Statement:  
+          - Effect: Allow  
+            Principal:  
+              Service: lambda.amazonaws.com  
+            Action: sts:AssumeRole  
+      Policies:  
+        - PolicyName: TokenCreationLambdaPolicy  
+          PolicyDocument:  
+            Version: "2012-10-17"  
+            Statement:    
+              - Effect: Allow  
+                Action:  
+                  - dynamodb:PutItem  
+                  - dynamodb:GetItem  
+                  - dynamodb:UpdateItem  
+                Resource: !GetAtt UserTokensTable.Arn
+              - Effect: Allow  
+                Action:  
+                  - lambda:InvokeFunction  
+                Resource: !GetAtt SendVerificationCodeLambda.Arn
+
+  # IAM Role for Send Verification Code Lambda Function
+  SendVerificationCodeLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: SendVerificationCodeLambdaRole
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: SendVerificationCodeLambdaPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ses:SendEmail
+                  - ses:SendRawEmail
+                Resource: "*"
+    
+  # IAM Role for Send Verification Code Lambda Function
+  TokenVerificationLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: TokenVerificationLambdaRole
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: TokenVerificationLambdaPolicy  
+          PolicyDocument:  
+            Version: "2012-10-17"  
+            Statement:    
+              - Effect: Allow  
+                Action:  
+                  - dynamodb:PutItem  
+                  - dynamodb:GetItem  
+                  - dynamodb:UpdateItem  
+                  - dynamodb:Scan  
+                Resource: !GetAtt UserTokensTable.Arn
+
+
+  # Lambda Layer Resource
+  JWTLayer:
+    Type: AWS::Lambda::LayerVersion
+    Properties:
+      LayerName: JWTLayer
+      Description: "Lambda Layer with JWT Python library"
+      Content:
+        S3Bucket: !Ref S3BucketName
+        S3Key: jwtpythonlayer.zip
+      CompatibleRuntimes:
+        - python3.8
+      LicenseInfo: "MIT"
+
+  # Token Creation Lambda Function Resource
+  TokenCreationLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: TokenCreationLambda
+      Handler: lambda_function.lambda_handler
+      Role: !GetAtt TokenCreationLambdaRole.Arn
+      Code:
+        S3Bucket: !Ref S3BucketName
+        S3Key: token_creation_lambda.zip
+      Runtime: python3.8
+      Layers:
+        - !Ref JWTLayer
+      MemorySize: 128
+      Timeout: 60
+      Environment:
+        Variables:
+          SendVerificationCodeLambdaArn: !GetAtt SendVerificationCodeLambda.Arn
+          Region: !Ref Region
+          AccountId: !Ref AccountId
+          EnvironmentName: !Ref EnvironmentName
+          UserTokensTableName: !Ref UserTokensTableName
+          SenderEmail: !Ref SenderEmail
+          SecretKeyJwtToken: !Ref SecretKeyJwtToken
+    
+  # Token Creation Lambda Function Resource
+  TokenVerificationLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: TokenVerificationtionLambda
+      Handler: lambda_function.lambda_handler
+      Role: !GetAtt TokenVerificationLambdaRole.Arn
+      Code:
+        S3Bucket: !Ref S3BucketName
+        S3Key: token_verification_lambda.zip
+      Runtime: python3.8
+      Layers:
+        - !Ref JWTLayer
+      MemorySize: 128
+      Timeout: 60
+      Environment:
+        Variables:
+          UserTokensTableName: !Ref UserTokensTableName
+          SecretKeyJwtToken: !Ref SecretKeyJwtToken
+
+  # Send Verification Code Lambda Function Resource
+  SendVerificationCodeLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: SendVerificationCodeLambda
+      Handler: lambda_function.lambda_handler
+      Role: !GetAtt SendVerificationCodeLambdaRole.Arn
+      Code:
+        S3Bucket: !Ref S3BucketName
+        S3Key: send_verification_code_lambda.zip
+      Runtime: python3.8
+      MemorySize: 128
+      Timeout: 60
+      Environment:
+        Variables:
+          Region: !Ref Region
+
+  # API Gateway Resource for /createToken  
+  TokenCreationAPI:  
+    Type: AWS::ApiGateway::RestApi  
+    Properties:  
+      Name: TokenCreationAPI  
+      Description: API for token creation  
+      EndpointConfiguration:  
+        Types:  
+          - EDGE  
+
+  TokenCreationResource:  
+    Type: AWS::ApiGateway::Resource  
+    Properties:  
+      RestApiId: !Ref TokenCreationAPI  
+      ParentId: !GetAtt TokenCreationAPI.RootResourceId  
+      PathPart: "createToken"  
+    DependsOn: TokenCreationAPI # Ensure API is ready before creating resource
+
+  # Add TokenVerificationResource to the existing API Gateway  
+  TokenVerificationResource:  
+    Type: AWS::ApiGateway::Resource  
+    Properties:  
+      RestApiId: !Ref TokenCreationAPI # Use the same RestApiId  
+      ParentId: !GetAtt TokenCreationAPI.RootResourceId   
+      PathPart: "tokenVerification"   
+    DependsOn: TokenCreationAPI  
+
+  CreateTokenMethod:  
+    Type: AWS::ApiGateway::Method  
+    Properties:  
+      RestApiId: !Ref TokenCreationAPI  
+      ResourceId: !Ref TokenCreationResource  
+      HttpMethod: POST  
+      AuthorizationType: NONE  
+      Integration:  
+        IntegrationHttpMethod: POST  
+        Type: AWS_PROXY  
+        Uri: !Sub  
+          - arn:aws:apigateway:${Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations  
+          - Region: !Ref "AWS::Region"  
+            LambdaArn: !GetAtt TokenCreationLambda.Arn  
+      MethodResponses:  
+        - StatusCode: 200  
+          ResponseModels:  
+            "application/json": "Empty"  
+        - StatusCode: 400  
+          ResponseModels:  
+            "application/json": "Empty"  
+        - StatusCode: 500  
+          ResponseModels:  
+            "application/json": "Empty"  
+    DependsOn: TokenCreationResource # Ensure Resource is ready before creating method
+  
+  TokenVerificationMethod:  
+    Type: AWS::ApiGateway::Method  
+    Properties:  
+      RestApiId: !Ref TokenCreationAPI # Same RestApiId   
+      ResourceId: !Ref TokenVerificationResource  
+      HttpMethod: POST  
+      AuthorizationType: NONE  
+      Integration:  
+        IntegrationHttpMethod: POST  
+        Type: AWS_PROXY  
+        Uri: !Sub  
+          - arn:aws:apigateway:${Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations  
+          - Region: !Ref "AWS::Region"  
+            LambdaArn: !GetAtt TokenVerificationLambda.Arn  
+      MethodResponses:  
+        - StatusCode: 200  
+          ResponseModels:  
+            "application/json": "Empty"  
+        - StatusCode: 400  
+          ResponseModels:  
+            "application/json": "Empty"  
+        - StatusCode: 500  
+          ResponseModels:  
+            "application/json": "Empty"  
+    DependsOn: TokenVerificationResource
+
+  # Grant API Gateway Permissions to Invoke the Lambda Function  
+  TokenCreationLambdaPermission:  
+    Type: AWS::Lambda::Permission  
+    Properties:  
+      FunctionName: !GetAtt TokenCreationLambda.Arn  
+      Action: lambda:InvokeFunction  
+      Principal: apigateway.amazonaws.com  
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${TokenCreationAPI}/*/POST/createToken"
+
+  TokenVerificationLambdaPermission:  
+    Type: AWS::Lambda::Permission  
+    Properties:  
+      FunctionName: !GetAtt TokenVerificationLambda.Arn  
+      Action: lambda:InvokeFunction  
+      Principal: apigateway.amazonaws.com  
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${TokenCreationAPI}/*/POST/tokenVerification" 
+
+  TokenCreationDeployment:  
+    Type: AWS::ApiGateway::Deployment  
+    Properties:  
+      RestApiId: !Ref TokenCreationAPI  
+    DependsOn: CreateTokenMethod # Ensure Method is ready before deploying  
+
+  TokenCreationStage:  
+    Type: AWS::ApiGateway::Stage  
+    Properties:  
+      StageName: !Ref EnvironmentName  
+      RestApiId: !Ref TokenCreationAPI  
+      DeploymentId: !Ref TokenCreationDeployment  
+    DependsOn: TokenCreationDeployment # Ensure Deployment is ready before creating Stage
+
+  # Log Groups for Lambda Functions  
+  TokenCreationLambdaLogGroup:  
+    Type: AWS::Logs::LogGroup  
+    Properties:  
+      LogGroupName: "/aws/lambda/TokenCreationLambda"  
+
+  SendVerificationCodeLambdaLogGroup:  
+    Type: AWS::Logs::LogGroup  
+    Properties:  
+      LogGroupName: "/aws/lambda/SendVerificationCodeLambda"  
+
+Outputs:  
+  UserTokensTableArn:  
+    Description: "ARN of the UserTokensTable DynamoDB Table"  
+    Value: !GetAtt UserTokensTable.Arn  
+
+  TokenCreationLambdaArn:  
+    Description: "ARN of the Token Creation Lambda Function"  
+    Value: !GetAtt TokenCreationLambda.Arn  
+
+  JWTLayerArn:  
+    Description: "ARN of the JWT Lambda Layer"  
+    Value: !Ref JWTLayer  
+
+  TokenCreationLambdaRoleArn:  
+    Description: "ARN of the IAM Role for Token Creation Lambda Execution"  
+    Value: !GetAtt TokenCreationLambdaRole.Arn  
+
+  SendVerificationCodeLambdaArn:  
+    Description: "ARN of the Send Verification Code Lambda Function"  
+    Value: !GetAtt SendVerificationCodeLambda.Arn  
+
+  SendVerificationCodeLambdaRoleArn:  
+    Description: "ARN of the IAM Role for Send Verification Code Lambda Execution"  
+    Value: !GetAtt SendVerificationCodeLambdaRole.Arn
