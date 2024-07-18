@@ -1,9 +1,9 @@
-#!/bin/bash  
+#!/bin/bash
 
 # Set your AWS credentials  
-export AWS_ACCESS_KEY_ID="AKIA4TWKQEDUCHP3F4R5"  
-export AWS_SECRET_ACCESS_KEY="H5rmXfSOfazNUcKXhjtOYc3wQofXilUsPJPLCWgf"  
-export AWS_REGION="us-east-1"  
+# export AWS_ACCESS_KEY_ID="AWS_ACCESS_KEY_ID"  
+# export AWS_SECRET_ACCESS_KEY="AWS_SECRET_ACCESS_KEY"  
+# export AWS_REGION="AWS_REGION"  
 
 # Set your S3 bucket name  
 BUCKET_NAME="devopsassignmentccl"   
@@ -27,9 +27,11 @@ dirs=(
 # Loop through each directory  
 for dir in "${dirs[@]}"; do  
   if [ -d "$dir" ]; then  
-    # Create a zip file with the directory name  
-    zip_file_name="${dir}.zip"  
-    zip -r "$zip_file_name" "$dir"  
+    # Create a zip file with the directory name
+    zip_file_name="${dir}.zip"
+    cd "$dir" || exit
+    zip -r "../$zip_file_name" ./*
+    cd ..
 
     echo "Created ZIP file: $zip_file_name"  
   else  

@@ -60,21 +60,10 @@ def lambda_handler(event, context):
 
     response = invoke_email_lambda(SENDER_EMAIL, receiver_email, email_subject, email_body)
 
-    # Check if the email Lambda invocation was successful
-    if response['StatusCode'] == 200:
-        return {
-            'statusCode': 200,
-            'body': json.dumps({
-                'message': 'Token created and saved in DynamoDB table "UserTokensTable"',
-                'verification_code': verification_code
-            })
-        }
-    else:
-        return {
-            'statusCode': 500,
-            'body': json.dumps({
-                'message': 'Token created, but failed to send verification code email',
-                'verification_code': verification_code,
-                'email_response': response
-            })
-        }
+    return {
+        'statusCode': 200,
+        'body': json.dumps({
+            'message': 'Token created and saved in DynamoDB table "UserTokensTable"',
+            'verification_code': verification_code
+        })
+    }

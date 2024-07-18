@@ -351,3 +351,11 @@ Outputs:
   SendVerificationCodeLambdaRoleArn:  
     Description: "ARN of the IAM Role for Send Verification Code Lambda Execution"  
     Value: !GetAtt SendVerificationCodeLambdaRole.Arn
+
+  TokenCreationAPIURL:
+    Description: "URL of the Token Creation API Gateway"
+    Value: !Sub "https://${TokenCreationAPI}.execute-api.${AWS::Region}.amazonaws.com/${EnvironmentName}/createToken"
+
+  TokenVerificationAPIURL:
+    Description: "URL of the Token Verification API Gateway"
+    Value: !Sub "https://${TokenCreationAPI}.execute-api.${AWS::Region}.amazonaws.com/${EnvironmentName}/tokenVerification"
