@@ -63,10 +63,10 @@ Follow these steps to deploy and configure the Cognito User Pool using AWS Cloud
    - Once the stack creation is complete, the infrastructure components including the DynamoDB table, Lambda functions, and API Gateway will be deployed.
 
 3. **Testing**
-   - Once the stack is completed we can copy the `To` and call it using postman by providing json object in the body as 
+   - Once the stack is completed we can copy the output variable value `TokenCreationAPIURL` and call it using postman by providing json object in the body as 
    `{"email": "emailAddress}`.
    - Above will send token to email as well as in api response for testing purpose.
-   - To verify token we can call `tokenVerfication` api by copying its link from the outputs with key as `` and provide a verification code in the body as `{"verification_code": "code"}`
+   - To verify token we can call `tokenVerfication` api by copying its link from the outputs with key as `TokenVerificationAPIURL` and provide a verification code in the body as `{"verification_code": "code"}`
    - This verify the token or gave error based on the token value.
 
 ### Note:
