@@ -70,7 +70,13 @@ Resources:
         - PolicyName: TokenCreationLambdaPolicy  
           PolicyDocument:  
             Version: "2012-10-17"  
-            Statement:    
+            Statement:
+              - Effect: 'Allow'
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource: 'arn:aws:logs:*:*:*'    
               - Effect: Allow  
                 Action:  
                   - dynamodb:PutItem  
@@ -99,6 +105,12 @@ Resources:
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
+              - Effect: 'Allow'
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource: 'arn:aws:logs:*:*:*'
               - Effect: Allow
                 Action:
                   - ses:SendEmail
@@ -121,7 +133,13 @@ Resources:
         - PolicyName: TokenVerificationLambdaPolicy  
           PolicyDocument:  
             Version: "2012-10-17"  
-            Statement:    
+            Statement:  
+              - Effect: 'Allow'
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource: 'arn:aws:logs:*:*:*'  
               - Effect: Allow  
                 Action:  
                   - dynamodb:PutItem  
@@ -321,6 +339,11 @@ Resources:
     Type: AWS::Logs::LogGroup  
     Properties:  
       LogGroupName: "/aws/lambda/TokenCreationLambda"  
+
+  TokenVerificationLambdaLogGroup:  
+    Type: AWS::Logs::LogGroup  
+    Properties:  
+      LogGroupName: "/aws/lambda/TokenVerificationLambda"
 
   SendVerificationCodeLambdaLogGroup:  
     Type: AWS::Logs::LogGroup  

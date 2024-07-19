@@ -4,7 +4,20 @@
 
 ### Steps to Deploy the Solution:
 
-1. **Deploy Cognito User Pool using CloudFormation:**
+1. **Clone the Repository:**
+   - Access the Solution-2 directory by navigating to `/CCLDevOpsTask/Solution-1-Cognito`.
+   - Clone the repository to your local machine by running the following command:
+     ```bash
+     git clone https://github.com/sajidrai/CCLDevOpsTask.git
+     cd /CCLDevOpsTask/Solution-1-Cognito
+     ```
+2. **Run Applicaiton Locally:**
+   - Navigating to following folder `/CCLDevOpsTask/Solution-1-Cognito/BasicApp`.
+   - Run local application by running the following command:
+     ```bash
+     python -m http.server 3000
+     ```
+3. **Deploy Cognito User Pool using CloudFormation:**
    - Access the `cognito-final.yaml` file located in `/CCLDevOpsTask/Solution-1-Cognito`.
    - Go to the AWS Management Console and navigate to the CloudFormation service.
    - Click on "Create stack" and choose "With new resources (standard)".
@@ -12,10 +25,9 @@
    - Proceed with the stack creation by following the on-screen instructions.
    - Once the stack creation is complete, the Cognito User Pool, User Pool Client, and related resources will be deployed.
 
-2. **Configure Cognito Hosted UI:**
-   - Navigate to the Cognito User Pool that was created in the AWS Management Console.
-   - In the "App integration" section, click on the Cognito Client application that was created.
-   - Click on the Hosted UI link to configure the hosted UI for user authentication.
+4. **Testing:**
+   - after successful creation of the stack In the outputs we have `SignInURL, LogoutURL, SignUpURL` .
+   - We can perform any operation sing in, signout and signup using mentioned links.
 
 ### Note:
 - Ensure that the necessary parameters in the CloudFormation template are correctly set before deploying the stack.
