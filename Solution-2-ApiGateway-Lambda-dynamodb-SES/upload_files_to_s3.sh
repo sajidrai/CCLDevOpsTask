@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Set your AWS credentials  
-# export AWS_ACCESS_KEY_ID="AWS_ACCESS_KEY_ID"  
-# export AWS_SECRET_ACCESS_KEY="AWS_SECRET_ACCESS_KEY"  
-# export AWS_REGION="AWS_REGION"  
+export AWS_ACCESS_KEY_ID="AWS_ACCESS_KEY_ID"  
+export AWS_SECRET_ACCESS_KEY="AWS_SECRET_ACCESS_KEY"  
+export AWS_REGION="AWS_REGION"  
 
 # Set your S3 bucket name  
 BUCKET_NAME="devopsassignmentccl"   
